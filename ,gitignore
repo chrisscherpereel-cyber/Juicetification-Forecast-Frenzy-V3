@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Streamlit
+.streamlit/
+
+# Student-generated outputs (never commit these)
+*.pdf
+*.xlsx
+*.csv
+!requirements.txt
+# ...but keep the published quick-start sheet
+!Juicetification_Forecast_Frenzy_Quickstart.pdf
