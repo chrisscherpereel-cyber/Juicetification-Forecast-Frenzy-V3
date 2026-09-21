@@ -1,0 +1,8 @@
+streamlit>=1.30
+pandas
+numpy
+altair
+openpyxl
+# Progress persistence (student_store.py) — required once storage secrets are configured
+dropbox
+cryptography
