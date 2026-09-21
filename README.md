@@ -23,8 +23,9 @@ By the end of the lab a student can:
 4. Fit a **linear trend** by least squares (slope, intercept), project it forward, and use
    **R²** to judge whether a trend exists at all.
 5. Build and apply day-of-week **seasonal indices** (computing the day and grand averages).
-6. Combine **seasonality with trend** by the cycle-average method: cycle averages → trend
-   projection → season indices → recombined forecast.
+6. Combine **seasonality with trend** by the cycle-average method, with one cycle = one week
+   and the seven seasons = Mon–Sun: weekly averages → trend projection → day indices →
+   recombined forecast.
 7. Forecast from drivers with a **regression** equation.
 8. Measure accuracy with **MAD** and **MAPE**.
 9. Read hold-out errors, identify the best model, and defend the selection.
@@ -136,9 +137,12 @@ The lab is organized as a set of tabs. Every learning module follows the same rh
    stable series shows why a low R² means *do not* project a trend.
 5. **Module 7** — seasonality: students compute the **day average** and **overall (grand)
    average** themselves, then form and apply the index.
-6. **Module 8 — Seasonality with trend** *(new in v3)* — the cycle-average method: average each
-   cycle, regress the cycle averages on cycle number to project the next cycle, compute season
-   indices, then multiply the two back together.
+6. **Module 8 — Seasonality with trend** *(new in v3)* — the cycle-average method on **four
+   weeks of daily demand**, the same grid shape as Module 7 but with the weekly level climbing:
+   average each week, regress the four weekly averages on week number to project week 5, compute
+   the seven day indices, then multiply the two back together. This is the same method the
+   *seasonal + trend* row of Module 11 is scored on, so the hand calculation and the hold-out
+   table are one and the same.
 7. **Module 9** — regression from temperature, promotions, and attendance.
 8. **Module 10 — Accuracy** — compute MAD and MAPE (placed *before* model selection on purpose).
 9. **Module 11 — Model selection** — read the hold-out error table (now including *linear trend*
@@ -215,10 +219,14 @@ also available.
   ahead, and compute `RSQ` — then see the same method applied to a deliberately *stable* series,
   where a low R² makes trend projection the wrong choice. Mirrors the deck's "Caution: using
   Excel" slides.
-- **Module 8 · Seasonality with trend.** The deck's cycle-average method, worked on three years
-  of quarterly data: cycle averages isolate the trend, a regression on cycle number projects the
-  next cycle average, season indices capture the repeating shape, and the two are multiplied back
-  together to forecast every quarter of the coming year.
+- **Module 8 · Seasonality with trend.** The deck's cycle-average method, with **one cycle = one
+  week and the seven seasons = Mon–Sun**. Students get four weeks of daily demand laid out exactly
+  like the Module 7 grid — the only difference is that the weekly level now climbs. Weekly averages
+  isolate the trend, a regression on week number projects week 5's level, day indices capture the
+  repeating shape, and the two are multiplied back together to forecast every day of the next two
+  weeks. Because the cycle is the same week used everywhere else in the lab, this is *literally*
+  the `seasonal + trend` method scored in Module 11 — the hand calculation and the hold-out row
+  are the same arithmetic.
 
 Supporting changes:
 
