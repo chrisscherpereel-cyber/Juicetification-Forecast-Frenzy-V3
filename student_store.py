@@ -19,6 +19,14 @@ import os
 import re
 import json
 import hashlib
+import time
+import random
+import threading
+from datetime import datetime, timezone
+
+
+def _now_iso():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _cfg(name, default=None):
@@ -91,26 +99,65 @@ def _slug(sid):
     return f"{s or 'student'}-{tag}"
 
 
+# One Fernet and one Dropbox client per process, shared by every session. Building a client per
+# call costs an OAuth token refresh each time (refresh-token mode); with ~30 concurrent students
+# that is slow and burns the Dropbox app's rate limit. Both objects are thread-safe to share.
+_lock = threading.Lock()
+_FERNET = None
+_CLIENT = None
+
+
 def _fernet():
-    from cryptography.fernet import Fernet
-    key = DB_ENCRYPTION_KEY
-    if isinstance(key, str):
-        key = key.encode()
-    return Fernet(key)
+    global _FERNET
+    if _FERNET is None:
+        with _lock:
+            if _FERNET is None:
+                from cryptography.fernet import Fernet
+                key = DB_ENCRYPTION_KEY
+                if isinstance(key, str):
+                    key = key.encode()
+                _FERNET = Fernet(key)
+    return _FERNET
 
 
 def _client():
+    global _CLIENT
+    if _CLIENT is None:
+        with _lock:
+            if _CLIENT is None:
+                import dropbox
+                if _REFRESH:
+                    _CLIENT = dropbox.Dropbox(oauth2_refresh_token=_REFRESH,
+                                              app_key=_APP_KEY, app_secret=_APP_SECRET,
+                                              timeout=20)
+                else:
+                    _CLIENT = dropbox.Dropbox(_ACCESS, timeout=20)
+    return _CLIENT
+
+
+def _with_retry(fn, attempts=4):
+    """Call fn(), retrying with jittered exponential backoff on Dropbox rate limiting (HTTP 429)
+    and transient network errors. Other API errors (e.g. path not found) propagate unchanged."""
     import dropbox
-    if _REFRESH:
-        return dropbox.Dropbox(oauth2_refresh_token=_REFRESH,
-                               app_key=_APP_KEY, app_secret=_APP_SECRET)
-    return dropbox.Dropbox(_ACCESS)
+    import requests
+    delay = 0.5
+    for i in range(attempts):
+        try:
+            return fn()
+        except dropbox.exceptions.RateLimitError as e:
+            wait = float(getattr(e, "backoff", None) or delay)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            wait = delay
+        if i == attempts - 1:
+            raise
+        time.sleep(wait + random.uniform(0, 0.25))
+        delay *= 2
 
 
 def _download(path):
     import dropbox
     try:
-        _md, res = _client().files_download(path)
+        _md, res = _with_retry(lambda: _client().files_download(path))
         return res.content
     except dropbox.exceptions.ApiError:
         return None
@@ -118,21 +165,22 @@ def _download(path):
 
 def _upload(path, data):
     import dropbox
-    _client().files_upload(data, path, mode=dropbox.files.WriteMode.overwrite)
+    _with_retry(lambda: _client().files_upload(
+        data, path, mode=dropbox.files.WriteMode.overwrite))
 
 
 def _list_json(folder):
     import dropbox
     try:
         out = []
-        res = _client().files_list_folder(folder)
+        res = _with_retry(lambda: _client().files_list_folder(folder))
         while True:
             for e in res.entries:
                 if getattr(e, "name", "").endswith(".json"):
                     out.append(e.path_lower)
             if not res.has_more:
                 break
-            res = _client().files_list_folder_continue(res.cursor)
+            res = _with_retry(lambda c=res.cursor: _client().files_list_folder_continue(c))
         return out
     except dropbox.exceptions.ApiError:
         return []
@@ -158,11 +206,23 @@ def load(game, sid):
         return {}
 
 
-def save(game, sid, state):
+def save(game, sid, state, progress=None, step=None, score=None):
     if not ENABLED or not sid:
         return False
-    payload = json.dumps(state, separators=(",", ":")).encode()
-    _upload(_progress_path(game, sid), _fernet().encrypt(payload))
+    payload = dict(state)
+    payload["_student"] = sid
+    payload["_updated_at"] = _now_iso()
+    if progress is not None:
+        try:
+            payload["_progress"] = max(0.0, min(1.0, float(progress)))
+        except (TypeError, ValueError):
+            pass
+    if step is not None:
+        payload["_step"] = str(step)
+    if score is not None:
+        payload["_score"] = score
+    _upload(_progress_path(game, sid),
+            _fernet().encrypt(json.dumps(payload, separators=(",", ":")).encode()))
     return True
 
 
@@ -211,6 +271,29 @@ def list_completions(game):
             continue
         try:
             out.append(json.loads(_fernet().decrypt(raw).decode()))
+        except Exception:
+            pass
+    return out
+
+
+def list_progress(game):
+    if not ENABLED:
+        return []
+    folder = f"{PROGRESS_ROOT}/{game or 'nogame'}"
+    out = []
+    for path in _list_json(folder):
+        raw = _download(path)
+        if raw is None:
+            continue
+        try:
+            d = json.loads(_fernet().decrypt(raw).decode())
+            out.append({
+                "student": d.get("_student"),
+                "progress": d.get("_progress"),
+                "updated_at": d.get("_updated_at"),
+                "step": d.get("_step"),
+                "score": d.get("_score"),
+            })
         except Exception:
             pass
     return out
