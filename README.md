@@ -38,7 +38,12 @@ By the end of the lab a student can:
 
 | File | Purpose |
 |---|---|
-| `forecast_frenzy.py` | The complete single-file Streamlit application. |
+| `forecast_frenzy.py` | The Streamlit application (all screens and UI). |
+| `ff_core.py` | The forecasting engine — scenario data, methods, Module 11 table, Excel workbook — cached once per server process. |
+| `ff_progress.py` | Background writer for durable (Dropbox) progress saves. |
+| `.streamlit/config.toml` | Server settings tuned for Community Cloud (see `PERFORMANCE.md`). |
+| `PERFORMANCE.md` | Performance audit, changes, and load-test results for 30–40 concurrent students. |
+| `tests/`, `perf/` | Regression tests (`python -m pytest tests -q`) and the concurrent-user load tester. |
 | `manifest.py` | The app's parameter schema for the Juicetification Director. |
 | `juice_director.py` | Shared Director config loader (identical across every simulation repo). |
 | `student_store.py` | Shared per-student progress store (identical across every simulation repo). |

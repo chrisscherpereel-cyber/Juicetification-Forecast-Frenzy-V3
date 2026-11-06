@@ -1,7 +1,6 @@
-streamlit>=1.30
+streamlit>=1.50,<2      # tested on 1.50 (Python 3.9+) and 1.67
 pandas
 numpy
-altair
 openpyxl
 # Progress persistence (student_store.py) — required once storage secrets are configured
 dropbox

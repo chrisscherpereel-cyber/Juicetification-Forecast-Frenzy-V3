@@ -1,0 +1,11 @@
+# Streamlit configuration for Juicetification: Forecast Frenzy.
+# Community Cloud reads this file from the repository root. See PERFORMANCE.md.
+
+[runner]
+# By default Streamlit forces a FULL garbage collection (gc.collect(2)) after every
+# script run of every session. With a whole class connected, that full scan of every
+# live object was the single largest CPU cost in the app (~20% of all server CPU in
+# profiling). Python's normal automatic garbage collector still runs, so memory is
+# still reclaimed; load tests at 40 concurrent students showed no meaningful change
+# in memory (~+8 MB) while CPU per student fell substantially.
+postScriptGC = false
