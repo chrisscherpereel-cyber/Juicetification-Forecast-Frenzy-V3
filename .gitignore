@@ -10,8 +10,9 @@ venv/
 .idea/
 .vscode/
 
-# Streamlit
-.streamlit/
+# Streamlit — never commit secrets; the shared config.toml IS committed (Community Cloud
+# reads .streamlit/config.toml from the repo root).
+.streamlit/secrets.toml
 
 # Student-generated outputs (never commit these)
 *.pdf
