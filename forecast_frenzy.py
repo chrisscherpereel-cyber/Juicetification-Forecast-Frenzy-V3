@@ -48,6 +48,7 @@ import streamlit as st
 
 import ff_core as core
 import student_store as store
+from login_gate import require_login
 from ff_progress import WRITER as _progress_writer
 from ff_core import (DAYS, DOW_INDEX, REG, ST_CYCLES, ST_COLS,  # shared constants
                      ls_fit, moving_average, exp_smoothing, regression_fit, mad)
@@ -70,7 +71,7 @@ if st.session_state.get("_signed_out"):
     st.title("🥤 Juicetification: Forecast Frenzy")
     if st.session_state.get("_signed_out_ok"):
         st.success("✅ Your progress has been saved. It is safe to close this tab now.")
-        st.caption("Sign back in anytime with the same student ID to pick up exactly where you "
+        st.caption("Sign back in anytime with the same ID to pick up exactly where you "
                    "left off.")
     else:
         st.warning("⚠️ You have been signed out, but we could not confirm your progress was saved "
@@ -82,16 +83,8 @@ if st.session_state.get("_signed_out"):
         st.rerun()
     st.stop()
 
-if store.enabled() and sid is None:
-    # Sign-in gate: no scenario is created until a student id exists.
-    st.title("🥤 Juicetification: Forecast Frenzy")
-    st.markdown("**Sign in to save and resume your progress.**")
-    _entered = st.text_input("Enter your student ID to begin", key="_gate_sid",
-                             placeholder="your campus ID")
-    if st.button("Start ▶", type="primary") and _entered.strip():
-        store.set_student_id(_entered)
-        st.rerun()
-    st.stop()
+# Sign-in gate (shared login_gate.py): no scenario is created until an ID exists.
+sid = require_login("Forecast Frenzy", "🥤")
 
 # ----------------------------------------------------------------------------
 # Economics (per juice) — instructor-configurable through the Director manifest
@@ -513,7 +506,7 @@ def performance_score():
 
 # Keys NOT persisted: transient flags, the derived seed (always recomputed), and internals.
 NO_PERSIST = {"_restored", "_autosave_blob", "_completion_recorded", "_completion_code",
-              "_gate_sid", "section", "seed", "_saved_all", "_signed_out", "_signed_out_ok"}
+              "_gate_sid", "_login_id", "section", "seed", "_saved_all", "_signed_out", "_signed_out_ok"}
 # Button / download_button widget keys must never be persisted or restored: Streamlit forbids
 # assigning a value to a button-type widget's session_state key (StreamlitValueAssignmentNotAllowed).
 # These prefixes are buttons only; the matching INPUT keys are "xl_"/"pc_" (kept), not "xlb_"/"pcb_".
